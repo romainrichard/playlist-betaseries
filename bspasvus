@@ -1,0 +1,397 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Auteur : Romain RICHARD <romain.richard.it.engineer@gmail.com>
+
+from xml.dom import minidom
+from urllib import urlencode
+import urllib2
+
+import hashlib
+import sys
+import os
+import re
+
+import binascii
+
+
+##########################################
+# Classe pour utiliser l'API BetaSeries. #
+##########################################
+class api:
+
+	# Constructeur de la classe.
+	# @param string key : Clé développeur.
+	def __init__(self, key):
+		self.key = key
+		self.token = ''
+
+	# Configure le token de l'utilisateur.
+	# @param string token : Token de l'utilisateur.
+	def set_token(self, token):
+		self.token = token
+
+	# Envoie une requête sur l'API
+	# @param string url : URL de l'API à appeler.
+	# @param array vars : Tableau des variables éventuelles à renseigner.
+	# @return object : Objet parsé par minidom du retour de l'API.
+	def send_request(self, url, vars):
+		url += '?key=' + self.key + '&token=' + self.token
+
+		for key, value in vars.items():
+			url += '&' + urlencode({key:value})
+
+		data = urllib2.urlopen(url).read()
+
+		xml = minidom.parseString(data)
+
+		return xml
+
+
+
+#######################################################
+# Classe pour afficher la liste des épisodes pas vus. #
+#######################################################
+class BSPasVus:
+
+	# Constructeur de la classe.
+	def __init__(self, base_config = "~/.BetaSeries/"):
+		self.__order_file = os.path.expanduser(base_config + "order.xml")
+		self.__key        = "f3df045397dc"
+		self.__login      = "Dev001"
+		self.__password   = "developer"
+		self.__auth_url   = "http://api.betaseries.com/members/auth.xml"
+		self.__infos_url  = "http://api.betaseries.com/members/infos.xml"
+		self.__infos      = None
+		self.__all_url    = "http://api.betaseries.com/members/episodes/all.xml"
+		self.__all        = None
+		self.__number     = -1
+		self.__cut        = -1
+		self.__folder     = ""
+		self.__shows      = True
+		self.__seasons    = True
+		self.__playlist   = os.path.expanduser(self.__folder + "playlist.m3u")
+
+		base = os.path.dirname(self.__order_file)
+		if not os.path.exists(base):
+			try:
+				os.makedirs(base)
+			except OSError, e:
+				error(e)
+
+		self.load_config_file(os.path.expanduser(base_config + "config"))
+
+	# Charge le fichier de configuration
+	def load_config_file(self, path):
+		try:
+			fd = open(path, 'r')
+		except IOError:
+			return
+
+		conf = {}
+		lines = fd.readlines()
+		pattern = re.compile("(\S+)\s+=\s+(.+)")
+		for l in lines:
+			if l[0] == '#':
+				continue
+
+			r = re.match(pattern, l)
+
+			try:
+				conf[r.group(1)] = r.group(2)
+			except AttributeError:
+				continue
+			except IndexError:
+				continue
+
+		fd.close()
+		self.set_config(conf)
+
+	# Configure les options.
+	def set_config(self, conf):
+		for k in conf.keys():
+			val = conf[k]
+			if val == None:
+				continue
+			elif k == "login":
+				self.__login = val
+			elif k == "password":
+				self.__password = val
+			elif k == "folder":
+				self.__folder = val
+			elif k == "shows":
+				self.__shows = (val == 'True')
+			elif k == "seasons":
+				self.__seasons = (val == 'True')
+			elif k == "cut":
+				self.__cut = int(val)
+			elif k == "number":
+				self.__number = int(val)-1
+
+	# Récupère les fichier xml contenant la liste des épisodes pas vus ainsi que les infos de l'utilisateur.
+	def download_xml(self):
+		# Construction de la classe avec la clé API.
+		a = api(self.__key)
+
+		# Appel de l'API pour identifier l'utilisateur.
+		xmldoc = a.send_request(self.__auth_url, {'login':self.__login, 'password':hashlib.md5(self.__password).hexdigest()})
+
+		# On met le token de l'utilisateur dans une variable
+		# et on configure la classe avec celle-ci.
+		token = xmldoc.getElementsByTagName('token')[0].firstChild.data
+		a.set_token(token)
+
+		# Appel de l'API pour récupérer les infos de l'utilisateur.
+		self.__infos = a.send_request(self.__infos_url, {})
+
+		# Appel de l'API pour récupérer la liste des épisodes pas vus.
+		self.__all = a.send_request(self.__all_url, {'view':'next'})
+
+
+
+	# Crée le fichier XML avec les séries ordonnées
+	def order_shows(self):
+		# La liste des séries non archivées de l'utilisateur
+		liste_series = "<?xml version=\"1.0\" ?><root>"
+		for i in range (0, self.__infos.getElementsByTagName('show').length):
+			if (self.__infos.getElementsByTagName('archive')[i].firstChild.data == '0'):
+				liste_series += "\n\t<show>" + self.__infos.getElementsByTagName('title')[i].firstChild.data + "</show>"
+		liste_series += "\n</root>"
+		liste_series_xml = minidom.parseString(liste_series.encode('utf-8'))
+
+		# La liste ordonnée des séries non archivées de l'utilisateur
+		series_ordonnees = "<?xml version=\"1.0\" ?><root>"
+
+		order_file_xml = None
+
+		# Est-ce que le fichier self.__order_file existe ?
+		if (os.path.isfile(self.__order_file)):
+			# Le fichier self.__order_file converti en xml
+			fd = open(self.__order_file, 'r')
+			order_file_xml = minidom.parse(fd)
+			fd.close()
+
+			# Supprimer les séries qui ont été archivées/supprimées
+			for i in range (0, order_file_xml.getElementsByTagName('show').length):
+				serie = order_file_xml.getElementsByTagName('show')[i].firstChild.data
+
+				# On cherche si la série est dans liste_series_xml
+				est_dans_liste_series_xml = False
+				for j in range (0, liste_series_xml.getElementsByTagName('show').length):
+					if (liste_series_xml.getElementsByTagName('show')[j].firstChild.data == serie):
+						est_dans_liste_series_xml = True
+
+				# On n'ajoute que les séries qui sont dans liste_series_xml
+				if (est_dans_liste_series_xml):
+					series_ordonnees += "\n\t<show>" + serie + "</show>"
+
+			# Ajouter les nouvelles séries
+			for i in range (0, liste_series_xml.getElementsByTagName('show').length):
+				serie = liste_series_xml.getElementsByTagName('show')[i].firstChild.data
+				
+				# On cherche si la série est dans order_file_xml
+				est_dans_order_file_xml = False
+				for j in range (0, order_file_xml.getElementsByTagName('show').length):
+					if (order_file_xml.getElementsByTagName('show')[j].firstChild.data == serie):
+						est_dans_order_file_xml = True
+
+				# On n'ajoute que les séries qui ne sont pas dans order_file_xml
+				if (not est_dans_order_file_xml):
+					series_ordonnees += "\n\t<show>" + serie + "</show>"
+
+		series_ordonnees += "\n</root>"
+
+		# On compare le contenu de self.__order_file et de series_ordonnees
+		# S'il est différent, on copie series_ordonnees dans self.__order_file
+		if (order_file_xml == None or order_file_xml.toxml() != series_ordonnees):
+			fd = open(self.__order_file, 'w')
+			fd.write(series_ordonnees.encode('utf-8'))
+			fd.close()
+			output("Modifiez le fichier order.xml")
+			#sys.exit(0)
+
+	# Trie le fichier xml en fonction des priorités.
+	def sort_xml(self):
+		try:
+			fd = open(self.__order_file, 'r')
+		except IOError:
+			return
+		order = minidom.parse(fd)
+		fd.close()
+
+		# Le nouveau fichier xml qui va contenir les épisodes triés
+		all_new = "<?xml version=\"1.0\" ?><root>"
+
+		# On parcourt le fichier self.__order_file
+		for i in range (0, order.getElementsByTagName('show').length):
+			serie = order.getElementsByTagName('show')[i].firstChild.data
+			serie_j = -1
+
+			# On parcourt le fichier self.__all
+			for j in range (0, self.__all.getElementsByTagName('show').length):
+				if (serie == self.__all.getElementsByTagName('show')[j].firstChild.data):
+					serie_j = j
+
+			if (serie_j != -1): # Il y a un épisode pas vus de la série serie
+				all_new += self.__all.getElementsByTagName('episode')[2*serie_j].toxml()
+
+		all_new += "\n</root>"
+		self.__all = minidom.parseString(all_new)
+
+
+
+	# Affiche la liste d'épisodes.
+	def display(self):
+		# Il y a deux tags <episode> par épisode pas vu
+		l     = self.__all.getElementsByTagName('episode').length/2
+
+		begin = 0
+		end   = l
+		if (self.__number >= 0):
+			begin = self.__number
+			end   = self.__number + (self.__number < l)
+
+		for i in range(begin, end):
+			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
+			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			title   = self.__all.getElementsByTagName('title')[i].firstChild.data
+			show    = show[0:self.__cut if (self.__cut >= 0) else len(show)]
+			output(show + ' ' + episode + ' ' + title)
+
+
+
+	# Récupère les adresses des épisodes pas vus et enregistre la playlist
+	def create_playlist(self):
+		playlist = ''
+		for i in range(0, self.__all.getElementsByTagName('episode').length/2):
+			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
+			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			adresse = unicode(self.__folder, 'utf-8')
+			
+			if (self.__shows):
+				# /!\ Les dossiers contenant chaque série doivent avoir le même nom que la série sur betaseries
+				# Exemple, pour Bleach, il doit y avoir un dossier nommé "Bleach (JP)"
+				adresse += show + '/'
+
+			if (self.__seasons):
+				# /!\ Les dossiers contenant chaque saison doivent être de la forme :
+				# "Saison *" si la saison est entre 1 et 9
+				# "Saison **"  si la saison est supérieure à 10
+				season = episode[(2 if (episode[1:2]=='0') else 1):3]
+				adresse += 'Saison ' + season
+
+			#output('\n' + adresse)
+			# Récupère le nom du fichier s'il existe
+			if (os.path.isdir(adresse)):
+				nom = None
+				# Remplacer les espaces par des points dans le nom de la série
+				show = show.replace(' ', '.')
+				# Chercher un fichier commençant par show.episode
+				fichiers = os.listdir(adresse)
+				for j in range(0, len(fichiers)):
+					if((fichiers[j].upper()).startswith((show + '.' + episode).upper())):
+						nom = fichiers[j]
+				if (nom != None):
+					adresse = 'file://' + adresse + nom + '\n'
+					# Modifier caractères (ex: un espace devient %20, une '(' devient %28, é devient %C3%A9 ...)
+					# TODO Trouver une meilleure méthode
+					adresse = adresse.replace(' ', '%20')
+					adresse = adresse.replace('[', '%5B')
+					adresse = adresse.replace(']', '%5D')
+					adresse = adresse.replace('(', '%28')
+					adresse = adresse.replace(')', '%29')
+					adresse = adresse.replace('ç'.decode('utf-8'), '%C3%A7')
+					adresse = adresse.replace('è'.decode('utf-8'), '%C3%A8')
+					adresse = adresse.replace('é'.decode('utf-8'), '%C3%A9')
+					adresse = adresse.replace('ê'.decode('utf-8'), '%C3%AA')
+					adresse = adresse.replace('ë'.decode('utf-8'), '%C3%AB')
+					adresse = adresse.replace('ï'.decode('utf-8'), '%C3%AF')
+					playlist += adresse
+
+		#output(playlist)
+		# Enregistre la playlist
+		fd = open(self.__playlist, 'w')
+		fd.write(playlist.encode('utf-8'))
+		fd.close()
+
+
+
+	# Affiche l'aide
+	def show_help(self):
+		output("Usage: bspasvus <options>")
+		output("Options list:")
+		output("-h|--help      : This helpful message")
+		output("-l|--login     : Login")
+		output("-p|--password  : Password")
+		output("-f|--folder    : Folder where the episodes are")
+		output("-s|--shows     : Different folders for each show ?")
+		output("-e|--seasons   : Different folders for each season ?")
+		output("-c|--cut       : Length max for the name of the show")
+		output("-n|--number    : Display the n-th show")
+
+
+
+
+# Affiche un message d'erreur et quitte
+def error(err):
+	print >>sys.stderr, err
+	sys.exit(1)
+
+# Affiche du texte à l'écran
+def output(str):
+	print >>sys.stdout, unicode(str).encode("UTF-8")
+	#print >>sys.stdout, str
+	#print >>sys.stdout, str.decode("UTF-8")
+
+# Le main
+def main():
+	bspasvus = BSPasVus()
+
+	conf = {}
+	i = 1
+	while i < len(sys.argv):
+		arg = sys.argv[i]
+
+		try:
+			val = sys.argv[i + 1]
+		except IndexError:
+			val = None
+
+		if arg == "-h" or arg == "--help":
+			bspasvus.show_help()
+			sys.exit(0)
+		elif arg == "-l" or arg == "--login":
+			conf['login'] = val
+			i += 1
+		elif arg == "-p" or arg == "--password":
+			conf['password'] = val
+			i += 1
+		elif arg == "-c" or arg == "--cut":
+			conf['cut'] = val
+			i += 1
+		elif arg == "-f" or arg == "--folder":
+			conf['folder'] = val
+			i += 1
+		elif arg == "-s" or arg == "--shows":
+			conf['shows'] = val
+			i += 1
+		elif arg == "-e" or arg == "--seasons":
+			conf['seasons'] = val
+			i += 1
+		elif arg == "-n" or arg == "--number":
+			conf['number'] = val
+			i += 1
+		else:
+			error("[ERROR] Unknown option: %s" % arg)
+
+		i += 1
+
+	bspasvus.set_config(conf)
+	bspasvus.download_xml()
+	bspasvus.order_shows()
+	bspasvus.sort_xml()
+	bspasvus.display()
+	bspasvus.create_playlist()
+	sys.exit(0)
+
+if __name__ == '__main__':
+	main()
