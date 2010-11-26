@@ -11,8 +11,6 @@ import sys
 import os
 import re
 
-import binascii
-
 
 ##########################################
 # Classe pour utiliser l'API BetaSeries. #
@@ -69,7 +67,7 @@ class BSPasVus:
 		self.__folder     = ""
 		self.__shows      = True
 		self.__seasons    = True
-		self.__playlist   = os.path.expanduser(self.__folder + "playlist.m3u")
+		self.__playlist   = os.path.expanduser(base_config + "playlist.m3u")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -288,7 +286,8 @@ class BSPasVus:
 				# Chercher un fichier commençant par show.episode
 				fichiers = os.listdir(adresse)
 				for j in range(0, len(fichiers)):
-					if((fichiers[j].upper()).startswith((show + '.' + episode).upper())):
+					if((fichiers[j].upper()).startswith((show + '.' + episode).upper())
+					and not (fichiers[j].endswith('srt'))):
 						nom = fichiers[j]
 				if (nom != None):
 					adresse = 'file://' + adresse + nom + '\n'

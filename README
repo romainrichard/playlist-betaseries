@@ -1,0 +1,38 @@
+Présentation
+------------
+
+bspasvus est un script modulaire et léger écrit en Python permettant
+d'exploiter le fichier XML mis à disposition contenant la liste des
+épisodes pas vus par l'utilisateur.
+
+http://www.betaseries.com/
+
+Installation
+------------
+
+Assurez vous d'être dans le répertoire du projet.
+
+Rendez le script install.sh exécutable :
+$ chmod +x install.sh
+
+Avec les privilèges administrateur, lancez la commande suivante :
+# ./install.sh install
+
+Pour plus d'informations :
+$ ./install.sh help
+
+Éditez le script install.sh si vous voulez le préfixe d'installation.
+
+Configuration
+-------------
+
+La configuration se fait par la ligne de commande,
+consultez l'aide pour plus d'informations (bspasvus --help).
+
+Les fichiers se situent dans ~/.BetaSeries/
+
+Voir le fichier config pour un exemple de configuration.
+
+Après la première exécution, un fichier order.xml est créé, vous pouvez
+ranger vos séries par ordre de préférence si vous le souhaitez.
+Un fichier playlist.m3u est aussi créé, vous pouvez l'ouvrir avec vlc.
