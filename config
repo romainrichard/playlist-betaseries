@@ -24,3 +24,6 @@
 
 # N'afficher que le n_ième épisode pas vu
 #nombre     = 3
+
+# N'afficher qu'un épisode par série
+#one        = True

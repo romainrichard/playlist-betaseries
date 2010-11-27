@@ -67,6 +67,7 @@ class BSPasVus:
 		self.__folder     = ""
 		self.__shows      = True
 		self.__seasons    = True
+		self.__one        = True
 		self.__playlist   = os.path.expanduser(base_config + "playlist.m3u")
 
 		base = os.path.dirname(self.__order_file)
@@ -124,6 +125,8 @@ class BSPasVus:
 				self.__cut = int(val)
 			elif k == "number":
 				self.__number = int(val)-1
+			elif k == "one":
+				self.__one = (val == 'True')
 
 	# Récupère les fichier xml contenant la liste des épisodes pas vus ainsi que les infos de l'utilisateur.
 	def download_xml(self):
@@ -142,7 +145,7 @@ class BSPasVus:
 		self.__infos = a.send_request(self.__infos_url, {})
 
 		# Appel de l'API pour récupérer la liste des épisodes pas vus.
-		self.__all = a.send_request(self.__all_url, {'view':'next'})
+		self.__all = a.send_request(self.__all_url, ({'view':'next'} if (self.__one) else {}))
 
 
 
@@ -311,14 +314,15 @@ class BSPasVus:
 	def show_help(self):
 		output("Usage: bspasvus <options>")
 		output("Options list:")
-		output("-h|--help      : This helpful message")
-		output("-l|--login     : Login")
-		output("-p|--password  : Password")
-		output("-f|--folder    : Folder where the episodes are")
-		output("-s|--shows     : Different folders for each show ?")
-		output("-e|--seasons   : Different folders for each season ?")
-		output("-c|--cut       : Length max for the name of the show")
-		output("-n|--number    : Display the n-th show")
+		output("-h|--help                  : This helpful message")
+		output("-l|--login \"<login>\"       : Your login")
+		output("-p|--password \"<password>\" : Your password")
+		output("-f|--folder \"<folder>\"     : Folder where the episodes are")
+		output("-s|--shows                 : Different folders for each show ?")
+		output("-e|--seasons               : Different folders for each season ?")
+		output("-c|--cut <num>             : Length max for the name of the show")
+		output("-n|--number <num>          : Display the n-th show")
+		output("-o|--one                   : Display only one episode for each show")
 
 
 
@@ -362,13 +366,16 @@ def main():
 			conf['folder'] = val
 			i += 1
 		elif arg == "-s" or arg == "--shows":
-			conf['shows'] = val
+			conf['shows'] = 'True'
 			i += 1
 		elif arg == "-e" or arg == "--seasons":
-			conf['seasons'] = val
+			conf['seasons'] = 'True'
 			i += 1
 		elif arg == "-n" or arg == "--number":
 			conf['number'] = val
+			i += 1
+		elif arg == "-o" or arg == "--one":
+			conf['one'] = 'True'
 			i += 1
 		else:
 			error("[ERROR] Unknown option: %s" % arg)
