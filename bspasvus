@@ -205,7 +205,6 @@ class BSPasVus:
 			fd.write(series_ordonnees.encode('utf-8'))
 			fd.close()
 			output("Modifiez le fichier order.xml")
-			#sys.exit(0)
 
 	# Trie le fichier xml en fonction des priorités.
 	def sort_xml(self):
@@ -277,7 +276,6 @@ class BSPasVus:
 				season = episode[(2 if (episode[1:2]=='0') else 1):3]
 				adresse += 'Saison ' + season
 
-			#output('\n' + adresse)
 			# Récupère le nom du fichier s'il existe
 			if (os.path.isdir(adresse)):
 				nom = None
@@ -289,28 +287,23 @@ class BSPasVus:
 					if((fichiers[j].upper()).startswith((show + '.' + episode).upper())
 					and not (fichiers[j].endswith('srt'))):
 						nom = fichiers[j]
+				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
 					adresse = 'file://' + adresse + nom + '\n'
-					# Modifier caractères (ex: un espace devient %20, une '(' devient %28, é devient %C3%A9 ...)
-					# TODO Trouver une meilleure méthode
-					adresse = adresse.replace(' ', '%20')
-					adresse = adresse.replace('[', '%5B')
-					adresse = adresse.replace(']', '%5D')
-					adresse = adresse.replace('(', '%28')
-					adresse = adresse.replace(')', '%29')
-					adresse = adresse.replace('ç'.decode('utf-8'), '%C3%A7')
-					adresse = adresse.replace('è'.decode('utf-8'), '%C3%A8')
-					adresse = adresse.replace('é'.decode('utf-8'), '%C3%A9')
-					adresse = adresse.replace('ê'.decode('utf-8'), '%C3%AA')
-					adresse = adresse.replace('ë'.decode('utf-8'), '%C3%AB')
-					adresse = adresse.replace('ï'.decode('utf-8'), '%C3%AF')
-					playlist += adresse
+					playlist += self.remplacer_caracteres(adresse)
 
-		#output(playlist)
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
 		fd.write(playlist.encode('utf-8'))
 		fd.close()
+
+	# Remplace les caractères spéciaux que vlc n'accèpte pas dans sa playlist
+	def remplacer_caracteres(self, ligne):
+		accent      = [ 'à'     , 'ç'     , 'è'     , 'é'     , 'ê'     , 'ë'     , 'ô'     , 'ö'     , ' '  , '['  , ']'  , '('  , ')'   ]
+		sans_accent = [ '%C3%A0', '%C3%A7', '%C3%A8', '%C3%A9', '%C3%AA', '%C3%AB', '%C3%B4', '%C3%B6', '%20', '%5B', '%5D', '%28', '%29' ]
+		for i in range(0, len(accent)):
+			ligne = ligne.replace(accent[i].decode('utf-8'), sans_accent[i])
+		return ligne
 
 
 
@@ -338,8 +331,6 @@ def error(err):
 # Affiche du texte à l'écran
 def output(str):
 	print >>sys.stdout, unicode(str).encode("UTF-8")
-	#print >>sys.stdout, str
-	#print >>sys.stdout, str.decode("UTF-8")
 
 # Le main
 def main():
