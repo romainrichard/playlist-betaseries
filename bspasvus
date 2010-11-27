@@ -65,9 +65,9 @@ class BSPasVus:
 		self.__number     = -1
 		self.__cut        = -1
 		self.__folder     = ""
-		self.__shows      = True
-		self.__seasons    = True
-		self.__one        = True
+		self.__shows      = False
+		self.__seasons    = False
+		self.__one        = False
 		self.__playlist   = os.path.expanduser(base_config + "playlist.m3u")
 
 		base = os.path.dirname(self.__order_file)
