@@ -68,7 +68,7 @@ class BSPasVus:
 		self.__shows      = False
 		self.__seasons    = False
 		self.__one        = False
-		self.__playlist   = os.path.expanduser(base_config + "playlist.m3u")
+		self.__playlist   = os.path.expanduser(base_config + "playlist.pls")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -292,9 +292,7 @@ class BSPasVus:
 						nom = fichiers[j]
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
-					adresse = adresse + nom
-					adresse = adresse.encode('utf-8')
-					playlist += 'file://' + quote(adresse) + '\n'
+					playlist += 'File' + str(i) + '=' + adresse + nom + '\n'
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
