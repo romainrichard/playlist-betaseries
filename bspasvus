@@ -3,7 +3,7 @@
 # Auteur : Romain RICHARD <romain.richard.it.engineer@gmail.com>
 
 from xml.dom import minidom
-from urllib import urlencode
+from urllib import urlencode, quote
 import urllib2
 
 import hashlib
@@ -292,21 +292,14 @@ class BSPasVus:
 						nom = fichiers[j]
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
-					adresse = 'file://' + adresse + nom + '\n'
-					playlist += self.remplacer_caracteres(adresse)
+					adresse = adresse + nom
+					adresse = adresse.encode('utf-8')
+					playlist += 'file://' + quote(adresse) + '\n'
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
 		fd.write(playlist.encode('utf-8'))
 		fd.close()
-
-	# Remplace les caractères spéciaux que vlc n'accèpte pas dans sa playlist
-	def remplacer_caracteres(self, ligne):
-		accent      = [ 'à'     , 'ç'     , 'è'     , 'é'     , 'ê'     , 'ë'     , 'ô'     , 'ö'     , ' '  , '['  , ']'  , '('  , ')'   ]
-		sans_accent = [ '%C3%A0', '%C3%A7', '%C3%A8', '%C3%A9', '%C3%AA', '%C3%AB', '%C3%B4', '%C3%B6', '%20', '%5B', '%5D', '%28', '%29' ]
-		for i in range(0, len(accent)):
-			ligne = ligne.replace(accent[i].decode('utf-8'), sans_accent[i])
-		return ligne
 
 
 
