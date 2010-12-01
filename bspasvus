@@ -175,7 +175,7 @@ class BSPasVus:
 
 			# Supprimer les séries qui ont été archivées/supprimées
 			for i in range (0, order_file_xml.getElementsByTagName('show').length):
-				serie = order_file_xml.getElementsByTagName('show')[i].firstChild.data
+				serie = escape(order_file_xml.getElementsByTagName('show')[i].firstChild.data)
 
 				# On cherche si la série est dans liste_series_xml
 				est_dans_liste_series_xml = False
