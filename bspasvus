@@ -247,9 +247,7 @@ class BSPasVus:
 				all_new += self.__all.getElementsByTagName('episode')[2*serie_j].toxml()
 
 		all_new += "\n</root>"
-		# Debug
-		output(all_new)
-		self.__all = minidom.parseString(all_new)
+		self.__all = minidom.parseString(all_new.encode('utf-8'))
 
 
 
