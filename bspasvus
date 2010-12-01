@@ -201,6 +201,15 @@ class BSPasVus:
 				# On n'ajoute que les séries qui ne sont pas dans order_file_xml
 				if (not est_dans_order_file_xml):
 					series_ordonnees += "\n\t<show>" + serie + "</show>"
+		# Le fichier self.__order_file n'existe pas
+		else:
+			# Ajouter les séries
+			for i in range (0, liste_series_xml.getElementsByTagName('show').length):
+				# On escape le nom car s'il contient '&amp;' il sera transformé en '&'
+				serie = escape(liste_series_xml.getElementsByTagName('show')[i].firstChild.data)
+				
+				# On ajoute la série
+				series_ordonnees += "\n\t<show>" + serie + "</show>"
 
 		series_ordonnees += "\n</root>"
 
@@ -238,6 +247,8 @@ class BSPasVus:
 				all_new += self.__all.getElementsByTagName('episode')[2*serie_j].toxml()
 
 		all_new += "\n</root>"
+		# Debug
+		output(all_new)
 		self.__all = minidom.parseString(all_new)
 
 
