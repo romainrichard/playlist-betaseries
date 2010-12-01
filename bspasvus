@@ -180,7 +180,7 @@ class BSPasVus:
 				# On cherche si la série est dans liste_series_xml
 				est_dans_liste_series_xml = False
 				for j in range (0, liste_series_xml.getElementsByTagName('show').length):
-					if (liste_series_xml.getElementsByTagName('show')[j].firstChild.data == serie):
+					if (escape(liste_series_xml.getElementsByTagName('show')[j].firstChild.data) == serie):
 						est_dans_liste_series_xml = True
 
 				# On n'ajoute que les séries qui sont dans liste_series_xml
