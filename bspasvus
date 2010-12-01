@@ -195,7 +195,7 @@ class BSPasVus:
 				# On cherche si la série est dans order_file_xml
 				est_dans_order_file_xml = False
 				for j in range (0, order_file_xml.getElementsByTagName('show').length):
-					if (order_file_xml.getElementsByTagName('show')[j].firstChild.data == serie):
+					if (escape(order_file_xml.getElementsByTagName('show')[j].firstChild.data) == serie):
 						est_dans_order_file_xml = True
 
 				# On n'ajoute que les séries qui ne sont pas dans order_file_xml
