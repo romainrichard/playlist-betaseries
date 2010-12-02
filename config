@@ -7,18 +7,6 @@
 # Le dossier où sont stockées vos séries
 #folder     = /home/user/Vidéos/Séries/
 
-# Est-ce que chaque série a son dossier attitré
-# i.e. dans folder vous avez des dossiers :
-# Dexter, Futurama, South Park, ...
-#shows      = True
-#shows      = False
-
-# Est-ce que chaque saison a son dossier attitré
-# i.e. vous avez des dossiers :
-# Saison 1, Saison 2, ..., Saison 10, ...
-#seasons    = True
-#seasons    = False
-
 # Limiter le nombre de caractères du nom des séries pour l'affichage
 #cut        = 24
 
