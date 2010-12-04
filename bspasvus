@@ -338,10 +338,6 @@ class BSPasVus:
 		#if (r != None):
 		#	output(fichier + ' ' + str(r.groups()))
 		
-		if (r != None and show.startswith('The.Good') and fichier.startswith('The.Good')):
-			output(show + ' ' + f_show + ' ' + fichier)
-			output(r.group('f_season') + ' ' + r.group('f_episode'))
-		
 		return (
 				r != None and
 				f_show.startswith(show.upper()) and
