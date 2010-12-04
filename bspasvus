@@ -300,6 +300,12 @@ class BSPasVus:
 	def match(self, fichier, show, episode):
 		fichier = fichier.replace(' ', '.')
 		show = show.replace(' ', '.')
+		
+		# TODO Trouver une meilleure solution
+		# Problème avec The Good Guys (2010) (et accessoirement Bleach (JP))
+		show = show.split('.(').pop(0)
+		fichier = fichier.replace('2010.', '')
+		
 		# Serie.S03E02
 		# Serie.302
 		# Serie.3x02
@@ -313,10 +319,7 @@ class BSPasVus:
 		# Serie/Serie.S03E02 ...
 		# Serie/Saison 3/02
 		# Serie/02 = Serie.S01E02
-		#r = re.match("((.*?)/)?((.*?)/)?(?P<f_show>.*?)[.\\s/][sS]?((.*?)(?P<f_season>\\d{1,2})/?[eEx]?)?(?P<f_episode>\\d{2}).*", fichier)
-		r = re.match("((.*?)[/\\\\])?((.*?)[/\\\\])?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv)$", fichier)
-		
-		
+		r = re.match("((.*?)[/\\\\])?((.*?)[/\\\\])?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
 		
 		# TODO Trouver une meilleure solution
 		f_show = ''
@@ -335,12 +338,15 @@ class BSPasVus:
 		#if (r != None):
 		#	output(fichier + ' ' + str(r.groups()))
 		
+		if (r != None and show.startswith('The.Good') and fichier.startswith('The.Good')):
+			output(show + ' ' + f_show + ' ' + fichier)
+			output(r.group('f_season') + ' ' + r.group('f_episode'))
+		
 		return (
 				r != None and
-				(f_show.startswith(show.upper()) or (f_show + " (JP)").startswith(show.upper())) and
+				f_show.startswith(show.upper()) and
 				episode[1:3].endswith(('01' if (r.group('f_season') == None) else r.group('f_season'))) and
-				episode[3:6].endswith(r.group('f_episode')) and
-				(fichier.endswith('avi') or fichier.endswith('mkv'))
+				episode[3:6].endswith(r.group('f_episode'))
 				)
 
 
