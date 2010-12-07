@@ -10,18 +10,20 @@ http://www.betaseries.com/
 Installation
 ------------
 
-Assurez vous d'être dans le répertoire du projet.
+Téléchargez le fichier https://github.com/downloads/romainrichard/playlist-betaseries/install-bspasvus-betaseries.sh
 
-Rendez le script install.sh exécutable :
-$ chmod +x install.sh
+Rendez le script install-bspasvus-betaseries.sh exécutable :
+$ chmod +x install-bspasvus-betaseries.sh
 
 Avec les privilèges administrateur, lancez la commande suivante :
-# ./install.sh install
+# ./install-bspasvus-betaseries.sh install
+
+Le script va alors télécharger la dernière version de bspasvus et l'installer.
 
 Pour plus d'informations :
-$ ./install.sh help
+$ ./install-bspasvus-betaseries.sh help
 
-Éditez le script install.sh si vous voulez le préfixe d'installation.
+Éditez le script install.sh si vous voulez changer le préfixe d'installation.
 
 Configuration
 -------------
