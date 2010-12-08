@@ -15,3 +15,6 @@
 
 # N'afficher qu'un épisode par série
 #one        = True
+
+# Marquer automatiquement les épisodes comme vus à la fin de la lecture
+#watched    = True

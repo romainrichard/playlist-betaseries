@@ -55,19 +55,22 @@ class BSPasVus:
 	# Constructeur de la classe.
 	def __init__(self, base_config = "~/.BetaSeries/"):
 		self.__order_file = os.path.expanduser(base_config + "order.xml")
-		self.__key        = "f3df045397dc"
-		self.__login      = "Dev001"
-		self.__password   = "developer"
-		self.__auth_url   = "http://api.betaseries.com/members/auth.xml"
-		self.__infos_url  = "http://api.betaseries.com/members/infos.xml"
-		self.__infos      = None
-		self.__all_url    = "http://api.betaseries.com/members/episodes/all.xml"
-		self.__all        = None
-		self.__number     = -1
-		self.__cut        = -1
-		self.__folder     = ""
-		self.__one        = False
-		self.__playlist   = os.path.expanduser(base_config + "playlist.pls")
+		self.__key         = "f3df045397dc"
+		self.__login       = "Dev001"
+		self.__password    = "developer"
+		self.__token       = ""
+		self.__auth_url    = "http://api.betaseries.com/members/auth.xml"
+		self.__infos_url   = "http://api.betaseries.com/members/infos.xml"
+		self.__infos       = None
+		self.__all_url     = "http://api.betaseries.com/members/episodes/all.xml"
+		self.__all         = None
+		self.__watched_url = "http://api.betaseries.com/members/watched/"
+		self.__number      = -1
+		self.__cut         = -1
+		self.__folder      = ""
+		self.__one         = False
+		self.__watched     = False
+		self.__playlist    = os.path.expanduser(base_config + "playlist.pls")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -122,6 +125,8 @@ class BSPasVus:
 				self.__number = int(val)-1
 			elif k == "one":
 				self.__one = (val == 'True')
+			elif k == "watched":
+				self.__watched = (val == 'True')
 
 	# Récupère les fichier xml contenant la liste des épisodes pas vus ainsi que les infos de l'utilisateur.
 	def download_xml(self):
@@ -133,8 +138,8 @@ class BSPasVus:
 
 		# On met le token de l'utilisateur dans une variable
 		# et on configure la classe avec celle-ci.
-		token = xmldoc.getElementsByTagName('token')[0].firstChild.data
-		a.set_token(token)
+		self.__token = xmldoc.getElementsByTagName('token')[0].firstChild.data
+		a.set_token(self.__token)
 
 		# Appel de l'API pour récupérer les infos de l'utilisateur.
 		self.__infos = a.send_request(self.__infos_url, {})
@@ -270,10 +275,18 @@ class BSPasVus:
 	# Récupère les adresses des épisodes pas vus et enregistre la playlist
 	def create_playlist(self):
 		playlist = ''
+		# Pour ne pas récupérer les url des srt
+		decalage_url = 0
 		for i in range(0, self.__all.getElementsByTagName('episode').length/2):
-			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
-			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
 			adresse = unicode(self.__folder, 'utf-8')
+			
+			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
+			# 2*i+1 car il y a 2 tags <episode> pour chaque episode non vu, le 2nd - qui nous intéresse - contient le numéro de saison et d'épisode
+			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			# On ne veut pas les url des srt (http://www.betaseries.com/srt/*****) mais de la serie (le nom)
+			while(self.__all.getElementsByTagName('url')[i+decalage_url].firstChild.data.startswith('http')):
+				decalage_url += 1
+			serie_url = self.__all.getElementsByTagName('url')[i+decalage_url].firstChild.data
 
 			# Récupère le nom du fichier s'il existe
 			if (os.path.isdir(adresse)):
@@ -288,7 +301,9 @@ class BSPasVus:
 						nom = fichiers[j]
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
-					playlist += 'File' + str(i) + '=' + adresse + nom + '\n'
+					playlist += 'File' + str(2*i) + '=' + adresse + nom + '\n'
+					if (self.__watched):
+						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
@@ -326,23 +341,17 @@ class BSPasVus:
 		if (r != None):
 			f_show = r.group('f_show').upper()
 		# Problème avec (par ex) : How.Not.to.Live.Your.Life/Saison.3/05.Don.Dates.A.Homeless.HDTV.XviD-FoV.avi
+		# On se retrouve avec f_show = Saison
 		if (r != None and (r.group('f_show').upper() == "SEASON" or r.group('f_show').upper() == "SAISON")):
 			#output('OUPS ! ' + show)
 			ra = re.match("(?P<f_show>.*?)/(.*?)", fichier)
 			f_show = ra.group('f_show').upper()
 		
-		#if (r != None and
-		#	((r.group('f_show').upper()).startswith(show.upper()) or (r.group('f_show').upper() + " (JP)").startswith(show.upper()))):
-		#	output(fichier + ' ' + r.group('f_show') + ' ' +  r.group('f_season') + ' ' +  r.group('f_episode') + ' ' + show + ' ' + episode)
-		
-		#if (r != None):
-		#	output(fichier + ' ' + str(r.groups()))
-		
 		return (
 				r != None and
 				f_show.startswith(show.upper()) and
 				episode[1:3].endswith(('01' if (r.group('f_season') == None) else r.group('f_season'))) and
-				episode[3:6].endswith(r.group('f_episode'))
+				episode[4:6].endswith(r.group('f_episode'))
 				)
 
 
@@ -358,6 +367,7 @@ class BSPasVus:
 		output("-c|--cut <num>             : Length max for the name of the show")
 		output("-n|--number <num>          : Display the n-th show")
 		output("-o|--one                   : Display only one episode for each show")
+		output("-w|--watched               : Add an item to the playlist to mark the episode as watched")
 
 
 
@@ -405,6 +415,9 @@ def main():
 			i += 1
 		elif arg == "-o" or arg == "--one":
 			conf['one'] = 'True'
+			i += 1
+		elif arg == "-w" or arg == "--watched":
+			conf['watched'] = 'True'
 			i += 1
 		else:
 			error("[ERROR] Unknown option: %s" % arg)
