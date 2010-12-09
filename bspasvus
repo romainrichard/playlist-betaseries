@@ -323,6 +323,7 @@ class BSPasVus:
 	# Regexp sur le nom du fichier
 	# /!\ Les dossiers contenant chaque série doivent avoir le même nom que la série sur betaseries (à part pour les animes où le '(JP)' n'est pas nécessaire
 	def match(self, fichier, show, episode):
+		fichier = fichier.replace('_', '.')
 		fichier = fichier.replace(' ', '.')
 		show = show.replace(' ', '.')
 		
@@ -344,7 +345,7 @@ class BSPasVus:
 		# Serie/Serie.S03E02 ...
 		# Serie/Saison 3/02
 		# Serie/02 = Serie.S01E02
-		r = re.match("((.*?)[/\\\\])?((.*?)[/\\\\])?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
+		r = re.match("((.*?)[/\\\\])*?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
 		
 		# TODO Trouver une meilleure solution
 		f_show = ''
