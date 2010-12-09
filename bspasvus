@@ -4,13 +4,14 @@
 
 from xml.dom import minidom
 from xml.sax.saxutils import escape
-from urllib import urlencode, quote
+from urllib import urlencode, quote, urlretrieve
 import urllib2
 
 import hashlib
 import sys
 import os
 import re
+import zipfile
 
 
 ##########################################
@@ -54,23 +55,27 @@ class BSPasVus:
 
 	# Constructeur de la classe.
 	def __init__(self, base_config = "~/.BetaSeries/"):
+		self.__api           = None
+		self.__api_url       = "http://api.betaseries.com/"
 		self.__order_file = os.path.expanduser(base_config + "order.xml")
-		self.__key         = "f3df045397dc"
-		self.__login       = "Dev001"
-		self.__password    = "developer"
-		self.__token       = ""
-		self.__auth_url    = "http://api.betaseries.com/members/auth.xml"
-		self.__infos_url   = "http://api.betaseries.com/members/infos.xml"
-		self.__infos       = None
-		self.__all_url     = "http://api.betaseries.com/members/episodes/all.xml"
-		self.__all         = None
-		self.__watched_url = "http://api.betaseries.com/members/watched/"
-		self.__number      = -1
-		self.__cut         = -1
-		self.__folder      = ""
-		self.__one         = False
-		self.__watched     = False
-		self.__playlist    = os.path.expanduser(base_config + "playlist.pls")
+		self.__key           = "f3df045397dc"
+		self.__login         = "Dev001"
+		self.__password      = "developer"
+		self.__token         = ""
+		self.__auth_url      = self.__api_url + "members/auth.xml"
+		self.__infos_url     = self.__api_url + "members/infos.xml"
+		self.__infos         = None
+		self.__all_url       = self.__api_url + "members/episodes/all.xml"
+		self.__all           = None
+		self.__watched_url   = self.__api_url + "members/watched/"
+		self.__number        = -1
+		self.__cut           = -1
+		self.__folder        = ""
+		self.__one           = False
+		self.__watched       = False
+		self.__subtitles     = ""
+		self.__subtitles_url = self.__api_url + "subtitles/show.xml"
+		self.__playlist      = os.path.expanduser(base_config + "playlist.pls")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -127,25 +132,27 @@ class BSPasVus:
 				self.__one = (val == 'True')
 			elif k == "watched":
 				self.__watched = (val == 'True')
+			elif k == "subtitles":
+				self.__subtitles = val
 
 	# Récupère les fichier xml contenant la liste des épisodes pas vus ainsi que les infos de l'utilisateur.
 	def download_xml(self):
 		# Construction de la classe avec la clé API.
-		a = api(self.__key)
+		self.__api = api(self.__key)
 
 		# Appel de l'API pour identifier l'utilisateur.
-		xmldoc = a.send_request(self.__auth_url, {'login':self.__login, 'password':hashlib.md5(self.__password).hexdigest()})
+		xmldoc = self.__api.send_request(self.__auth_url, {'login':self.__login, 'password':hashlib.md5(self.__password).hexdigest()})
 
 		# On met le token de l'utilisateur dans une variable
 		# et on configure la classe avec celle-ci.
 		self.__token = xmldoc.getElementsByTagName('token')[0].firstChild.data
-		a.set_token(self.__token)
+		self.__api.set_token(self.__token)
 
 		# Appel de l'API pour récupérer les infos de l'utilisateur.
-		self.__infos = a.send_request(self.__infos_url, {})
+		self.__infos = self.__api.send_request(self.__infos_url, {})
 
 		# Appel de l'API pour récupérer la liste des épisodes pas vus.
-		self.__all = a.send_request(self.__all_url, ({'view':'next'} if (self.__one) else {}))
+		self.__all = self.__api.send_request(self.__all_url, ({'view':'next'} if (self.__one) else {}))
 
 
 
@@ -266,7 +273,7 @@ class BSPasVus:
 		for i in range(begin, end):
 			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
 			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
-			title   = self.__all.getElementsByTagName('title')[i].firstChild.data
+			title   = ('' if (self.__all.getElementsByTagName('title')[i].firstChild == None) else self.__all.getElementsByTagName('title')[i].firstChild.data)
 			show    = show[0:self.__cut if (self.__cut >= 0) else len(show)]
 			output(show + ' ' + episode + ' ' + title)
 
@@ -304,6 +311,9 @@ class BSPasVus:
 					playlist += 'File' + str(2*i) + '=' + adresse + nom + '\n'
 					if (self.__watched):
 						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
+					# On se sert du nom du fichier pour récupérer si nécessaire les sous-titres
+					if ((self.__subtitles == "VF" or self.__subtitles == "VO") and not os.path.isfile(adresse + os.path.splitext(nom)[0] + '.srt')):
+						self.download_subtitles(serie_url, nom)
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
@@ -354,6 +364,39 @@ class BSPasVus:
 				episode[4:6].endswith(r.group('f_episode'))
 				)
 
+	# Télécharge le sous-titres de l'épisode
+	def download_subtitles(self, serie_url, nom):
+		# nom peut contenir des dossiers, on sépare alors les dossiers et le nom du fichier
+		path = unicode(self.__folder, 'utf-8')
+		for i in range(0, len(nom.split('/'))-1):
+			path += nom.split('/')[i] + '/'
+		filename = os.path.splitext(nom.split('/')[-1])[0]
+		
+		# On récupère les sous-titres correspondant à l'épisode
+		subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename, 'language':self.__subtitles})
+		
+		# Télécharger les sous-titres
+		if (subtitles.getElementsByTagName('file') != []):
+			# On télécharge le dernier sous-titre retourné
+			subtitle = path + subtitles.getElementsByTagName('file')[-1].firstChild.data
+			urlretrieve(subtitles.getElementsByTagName('url')[-1].firstChild.data, subtitle)
+			
+			# On récupère l'extension du fichier téléchargé
+			extension = os.path.splitext(subtitle)[-1]
+			
+			# Si on a téléchargé un .zip, le décompresser
+			if (extension == '.zip'):
+				# Dézipper
+				tmp = zipfile.ZipFile(subtitle, 'r').namelist()[0]
+				zipfile.ZipFile(subtitle, 'r').extractall(path)
+				# Supprimer le fichier zip
+				os.remove(subtitle)
+				# Récupérer le nom du fichier que l'on vient de dézipper
+				subtitle = path + tmp
+		
+			# Renommer le fichier srt pour correspondre au nom de la vidéo
+			os.rename(subtitle, path + filename + '.srt')
+
 
 
 	# Affiche l'aide
@@ -368,6 +411,7 @@ class BSPasVus:
 		output("-n|--number <num>          : Display the n-th show")
 		output("-o|--one                   : Display only one episode for each show")
 		output("-w|--watched               : Add an item to the playlist to mark the episode as watched")
+		output("-s|--subtitles \"language\"  : Download subtitles in the language (VO|VF) you want")
 
 
 
@@ -418,6 +462,9 @@ def main():
 			i += 1
 		elif arg == "-w" or arg == "--watched":
 			conf['watched'] = 'True'
+			i += 1
+		elif arg == "-s" or arg == "--subtitles":
+			conf['subtitles'] = val
 			i += 1
 		else:
 			error("[ERROR] Unknown option: %s" % arg)
