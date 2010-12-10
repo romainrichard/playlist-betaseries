@@ -312,8 +312,16 @@ class BSPasVus:
 					if (self.__watched):
 						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
 					# On se sert du nom du fichier pour récupérer si nécessaire les sous-titres
-					if ((self.__subtitles == "VF" or self.__subtitles == "VO") and not os.path.isfile(adresse + os.path.splitext(nom)[0] + '.srt')):
-						self.download_subtitles(serie_url, nom)
+					#if ((self.__subtitles == "VF" or self.__subtitles == "VO") and not os.path.isfile(adresse + os.path.splitext(nom)[0] + '.srt')):
+					if (self.__subtitles == "VF" or self.__subtitles == "VO"):
+						quality = 0
+						# S'il y a déjà un sous-titre de présent, on essaye de récupérer sa qualité
+						for j in range(0, len(fichiers)):
+							if (fichiers[j].startswith(os.path.splitext(nom)[0]) and fichiers[j].endswith('srt')):
+								quality_tmp = os.path.splitext(fichiers[j].split('/')[-1])[0].replace(os.path.splitext(nom.split('/')[-1])[0], '').replace('.', '')
+								if (quality_tmp != ''):
+									quality = int(quality_tmp)
+						self.download_subtitles(serie_url, nom, quality)
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
@@ -366,7 +374,7 @@ class BSPasVus:
 				)
 
 	# Télécharge le sous-titres de l'épisode
-	def download_subtitles(self, serie_url, nom):
+	def download_subtitles(self, serie_url, nom, quality):
 		# nom peut contenir des dossiers, on sépare alors les dossiers et le nom du fichier
 		path = unicode(self.__folder, 'utf-8')
 		for i in range(0, len(nom.split('/'))-1):
@@ -378,25 +386,38 @@ class BSPasVus:
 		
 		# Télécharger les sous-titres
 		if (subtitles.getElementsByTagName('file') != []):
-			# On télécharge le dernier sous-titre retourné
-			subtitle = path + subtitles.getElementsByTagName('file')[-1].firstChild.data
-			urlretrieve(subtitles.getElementsByTagName('url')[-1].firstChild.data, subtitle)
+			# On cherche le sous-titre de meilleure qualité
+			best_quality = 0
+			best_quality_i = 0
+			for i in range(0, subtitles.getElementsByTagName('quality').length):
+				if (int(subtitles.getElementsByTagName('quality')[i].firstChild.data) > best_quality):
+					best_quality = subtitles.getElementsByTagName('quality')[i].firstChild.data
+					best_quality_i = i
 			
-			# On récupère l'extension du fichier téléchargé
-			extension = os.path.splitext(subtitle)[-1]
+			# S'il y a un sous-titre de meilleure qualité que celui que l'on possède déjà, on le télécharge
+			if (int(best_quality) > quality):
+				subtitle = path + subtitles.getElementsByTagName('file')[best_quality_i].firstChild.data
+				urlretrieve(subtitles.getElementsByTagName('url')[best_quality_i].firstChild.data, subtitle)
 			
-			# Si on a téléchargé un .zip, le décompresser
-			if (extension == '.zip'):
-				# Dézipper
-				tmp = zipfile.ZipFile(subtitle, 'r').namelist()[0]
-				zipfile.ZipFile(subtitle, 'r').extractall(path)
-				# Supprimer le fichier zip
-				os.remove(subtitle)
-				# Récupérer le nom du fichier que l'on vient de dézipper
-				subtitle = path + tmp
+				# On récupère l'extension du fichier téléchargé
+				extension = os.path.splitext(subtitle)[-1]
+			
+				# Si on a téléchargé un .zip, le décompresser
+				if (extension == '.zip'):
+					# Dézipper
+					tmp = zipfile.ZipFile(subtitle, 'r').namelist()[0]
+					zipfile.ZipFile(subtitle, 'r').extractall(path)
+					# Supprimer le fichier zip
+					os.remove(subtitle)
+					# Récupérer le nom du fichier que l'on vient de dézipper
+					subtitle = path + tmp
 		
-			# Renommer le fichier srt pour correspondre au nom de la vidéo
-			os.rename(subtitle, path + filename + '.srt')
+				# Renommer le fichier srt pour correspondre au nom de la vidéo
+				os.rename(subtitle, path + filename + '.' + best_quality + '.srt')
+				
+				# S'il y avait un fichier sous-titres d'une qualité moindre, on le supprime
+				if (quality > 0):
+					os.remove(path + filename + '.' + str(quality) + '.srt')
 
 
 
