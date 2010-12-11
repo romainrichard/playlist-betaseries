@@ -7,12 +7,6 @@
 # Le dossier où sont stockées vos séries
 #folder     = /home/user/Vidéos/Séries/
 
-# Limiter le nombre de caractères du nom des séries pour l'affichage
-#cut        = 24
-
-# N'afficher que le n_ième épisode pas vu
-#nombre     = 3
-
 # N'afficher qu'un épisode par série
 #one        = True
 
@@ -21,3 +15,12 @@
 
 # Télécharger les sous-titres dans la langue de votre choix (VF ou VO)
 #subtitles  = VF
+
+# Afficher les épisodes non téléchargés
+#downloaded = True
+
+# Limiter le nombre de caractères du nom des séries pour l'affichage
+#cut        = 24
+
+# N'afficher que le n_ième épisode pas vu
+#nombre     = 3

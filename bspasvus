@@ -55,27 +55,29 @@ class BSPasVus:
 
 	# Constructeur de la classe.
 	def __init__(self, base_config = "~/.BetaSeries/"):
-		self.__api           = None
-		self.__api_url       = "http://api.betaseries.com/"
-		self.__order_file = os.path.expanduser(base_config + "order.xml")
-		self.__key           = "f3df045397dc"
-		self.__login         = None
-		self.__password      = None
-		self.__token         = ""
-		self.__auth_url      = self.__api_url + "members/auth.xml"
-		self.__infos_url     = self.__api_url + "members/infos.xml"
-		self.__infos         = None
-		self.__all_url       = self.__api_url + "members/episodes/all.xml"
-		self.__all           = None
-		self.__watched_url   = self.__api_url + "members/watched/"
-		self.__number        = -1
-		self.__cut           = -1
-		self.__folder        = ""
-		self.__one           = False
-		self.__watched       = False
-		self.__subtitles     = ""
-		self.__subtitles_url = self.__api_url + "subtitles/show.xml"
-		self.__playlist      = os.path.expanduser(base_config + "playlist.pls")
+		self.__api            = None
+		self.__api_url        = "http://api.betaseries.com/"
+		self.__order_file     = os.path.expanduser(base_config + "order.xml")
+		self.__key            = "f3df045397dc"
+		self.__login          = None
+		self.__password       = None
+		self.__token          = ""
+		self.__auth_url       = self.__api_url + "members/auth.xml"
+		self.__infos_url      = self.__api_url + "members/infos.xml"
+		self.__infos          = None
+		self.__all_url        = self.__api_url + "members/episodes/all.xml"
+		self.__all            = None
+		self.__watched_url    = self.__api_url + "members/watched/"
+		self.__number         = -1
+		self.__cut            = -1
+		self.__folder         = ""
+		self.__one            = False
+		self.__watched        = False
+		self.__downloaded     = False
+		self.__downloaded_url = self.__api_url + "members/downloaded/"
+		self.__subtitles      = ""
+		self.__subtitles_url  = self.__api_url + "subtitles/show.xml"
+		self.__playlist       = os.path.expanduser(base_config + "playlist.pls")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -124,16 +126,18 @@ class BSPasVus:
 				self.__password = val
 			elif k == "folder":
 				self.__folder = val
-			elif k == "cut":
-				self.__cut = int(val)
-			elif k == "number":
-				self.__number = int(val)-1
 			elif k == "one":
 				self.__one = (val == 'True')
 			elif k == "watched":
 				self.__watched = (val == 'True')
 			elif k == "subtitles":
 				self.__subtitles = val
+			elif k == "downloaded":
+				self.__downloaded = (val == 'True')
+			elif k == "cut":
+				self.__cut = int(val)
+			elif k == "number":
+				self.__number = int(val)-1
 
 	def get_login(self):
 		return self.__login
@@ -265,7 +269,7 @@ class BSPasVus:
 
 
 
-	# Affiche la liste d'épisodes.
+	# Affiche la liste d'épisodes
 	def display(self):
 		# Il y a deux tags <episode> par épisode pas vu
 		l     = self.__all.getElementsByTagName('episode').length/2
@@ -281,7 +285,11 @@ class BSPasVus:
 			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
 			title   = ('' if (self.__all.getElementsByTagName('title')[i].firstChild == None) else self.__all.getElementsByTagName('title')[i].firstChild.data)
 			show    = show[0:self.__cut if (self.__cut >= 0) else len(show)]
-			output(show + ' ' + episode + ' ' + title)
+			if (self.__downloaded):
+				if (int(self.__all.getElementsByTagName('downloaded')[i].firstChild.data) == 0):
+					output(show + ' ' + episode + ' ' + title)
+			else:
+				output(show + ' ' + episode + ' ' + title)
 
 
 
@@ -315,6 +323,9 @@ class BSPasVus:
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
 					playlist += 'File' + str(2*i) + '=' + adresse + nom + '\n'
+					# On marque l'épisode comme téléchargé
+					self.__api.send_request(self.__downloaded_url + serie_url + '.xml', {'season':episode[1:3], 'episode':episode[4:6]})
+					# Si l'utilisateur a demandé que les épisodes soient marqués comme vus, ont ajoute l'élément à la playlist qui fera ça
 					if (self.__watched):
 						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
 					# On se sert du nom du fichier pour récupérer si nécessaire les sous-titres
@@ -435,11 +446,12 @@ class BSPasVus:
 		output("-l|--login \"<login>\"       : Your login")
 		output("-p|--password \"<password>\" : Your password")
 		output("-f|--folder \"<folder>\"     : Folder where the episodes are")
-		output("-c|--cut <num>             : Length max for the name of the show")
-		output("-n|--number <num>          : Display the n-th show")
 		output("-o|--one                   : Display only one episode for each show")
 		output("-w|--watched               : Add an item to the playlist to mark the episode as watched")
 		output("-s|--subtitles \"language\"  : Download subtitles in the language (VO|VF) you want")
+		output("-d|--downloaded            : Display the episodes you haven't downloaded yet")
+		output("-c|--cut <num>             : Length max for the name of the show")
+		output("-n|--number <num>          : Display the n-th show")
 
 
 
@@ -476,14 +488,8 @@ def main():
 		elif arg == "-p" or arg == "--password":
 			conf['password'] = val
 			i += 1
-		elif arg == "-c" or arg == "--cut":
-			conf['cut'] = val
-			i += 1
 		elif arg == "-f" or arg == "--folder":
 			conf['folder'] = val
-			i += 1
-		elif arg == "-n" or arg == "--number":
-			conf['number'] = val
 			i += 1
 		elif arg == "-o" or arg == "--one":
 			conf['one'] = 'True'
@@ -493,6 +499,15 @@ def main():
 			i += 1
 		elif arg == "-s" or arg == "--subtitles":
 			conf['subtitles'] = val
+			i += 1
+		elif arg == "-d" or arg == "--downloaded":
+			conf['downloaded'] = 'True'
+			i += 1
+		elif arg == "-c" or arg == "--cut":
+			conf['cut'] = val
+			i += 1
+		elif arg == "-n" or arg == "--number":
+			conf['number'] = val
 			i += 1
 		else:
 			error("[ERROR] Unknown option: %s" % arg)
@@ -506,8 +521,8 @@ def main():
 		bspasvus.download_xml()
 		bspasvus.order_shows()
 		bspasvus.sort_xml()
-		bspasvus.display()
 		bspasvus.create_playlist()
+		bspasvus.display()
 	sys.exit(0)
 
 if __name__ == '__main__':
