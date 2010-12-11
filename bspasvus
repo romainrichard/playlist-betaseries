@@ -59,8 +59,8 @@ class BSPasVus:
 		self.__api_url       = "http://api.betaseries.com/"
 		self.__order_file = os.path.expanduser(base_config + "order.xml")
 		self.__key           = "f3df045397dc"
-		self.__login         = "Dev001"
-		self.__password      = "developer"
+		self.__login         = None
+		self.__password      = None
 		self.__token         = ""
 		self.__auth_url      = self.__api_url + "members/auth.xml"
 		self.__infos_url     = self.__api_url + "members/infos.xml"
@@ -134,6 +134,12 @@ class BSPasVus:
 				self.__watched = (val == 'True')
 			elif k == "subtitles":
 				self.__subtitles = val
+
+	def get_login(self):
+		return self.__login
+
+	def get_password(self):
+		return self.__password
 
 	# Récupère les fichier xml contenant la liste des épisodes pas vus ainsi que les infos de l'utilisateur.
 	def download_xml(self):
@@ -494,11 +500,14 @@ def main():
 		i += 1
 
 	bspasvus.set_config(conf)
-	bspasvus.download_xml()
-	bspasvus.order_shows()
-	bspasvus.sort_xml()
-	bspasvus.display()
-	bspasvus.create_playlist()
+	if (bspasvus.get_login() == None or bspasvus.get_password() == None):
+		output('You must enter your login and password')
+	else:
+		bspasvus.download_xml()
+		bspasvus.order_shows()
+		bspasvus.sort_xml()
+		bspasvus.display()
+		bspasvus.create_playlist()
 	sys.exit(0)
 
 if __name__ == '__main__':

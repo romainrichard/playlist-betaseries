@@ -15,8 +15,8 @@ Téléchargez le fichier https://github.com/downloads/romainrichard/playlist-bet
 Rendez le script install-bspasvus-betaseries.sh exécutable :
 $ chmod +x install-bspasvus-betaseries.sh
 
-Avec les privilèges administrateur, lancez la commande suivante :
-# ./install-bspasvus-betaseries.sh install
+Lancez la commande suivante :
+$ ./install-bspasvus-betaseries.sh install
 
 Le script va alors télécharger la dernière version de bspasvus et l'installer.
 
