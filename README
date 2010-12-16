@@ -1,11 +1,11 @@
 Présentation
 ------------
 
-bspasvus est un script modulaire et léger écrit en Python permettant
-d'exploiter le fichier XML mis à disposition contenant la liste des
-épisodes pas vus par l'utilisateur.
+bspasvus est un script modulaire et léger écrit en Python permettant de créer une playlist contenant la liste des épisodes pas vus par l'utilisateur.
 
 http://www.betaseries.com/
+
+
 
 Installation
 ------------
@@ -25,16 +25,70 @@ $ ./install-bspasvus-betaseries.sh help
 
 Éditez le script install.sh si vous voulez changer le préfixe d'installation.
 
+Les fichiers installés se situent dans ~/.BetaSeries/
+
+
+
 Configuration
 -------------
 
-La configuration se fait par la ligne de commande,
-consultez l'aide pour plus d'informations (bspasvus --help).
+Vous avez deux possibilités de configuration :
+1/ En modifiant le fichier ~/.BetaSeries/config
+2/ En ligne de commande
 
-Les fichiers se situent dans ~/.BetaSeries/
+La 1ère méthode vous demande simplement de décommenter (et modifier si nécessaire) les options que vous souhaitez activer.
+La 2ème méthode vous demande de passer les options lors de l'exécution.
 
-Voir le fichier config pour un exemple de configuration.
+Voici la liste des options (disponibles pour les deux méthodes) :
+-l|--login "<login>"        : Votre login sur BetaSeries
+-p|--password "<password>"  : Votre mot de passe
+-f|--folder "<folder>"      : Le dossier où sont stockées vos séries
+-o|--one                    : N'afficher qu'un épisode par série
+-w|--watched                : Marquer automatiquement les épisodes comme vus à la fin de la lecture
+-s|--subtitles "<language>" : Télécharger les sous-titres dans la langue de votre choix (VF, VO ou VM si vous n'avez pas de préférence pour la VO ou la VF)
+-d|--downloaded             : Afficher les épisodes non téléchargés
+-c|--cut <num>              : Limiter le nombre de caractères du nom des séries pour l'affichage
+-n|--number <num>           : N'afficher que le n_ième épisode pas vu
 
-Après la première exécution, un fichier order.xml est créé, vous pouvez
-ranger vos séries par ordre de préférence si vous le souhaitez.
-Un fichier playlist.m3u est aussi créé, vous pouvez l'ouvrir avec vlc.
+Pour que le script fonctionne il lui faut au moins votre login et password.
+Si vous voulez qu'il crée la playlist il faudra spécifier où sont vos épisodes (--folder).
+Le script est assez puissant pour trouver les épisodes (fichiers avi, mkv ou mp4) contenus dans tout sous-dossier de "folder" dont le nom (la casse n'est pas importante) commence d'une des façons décrites ci-dessous :
+1/ Serie.S03E02
+2/ Serie.302
+3/ Serie.3x02
+4/ Serie S03E02
+5/ Serie 302
+6/ Serie 3x02
+7/ Serie - S03E02
+8/ Serie - 302
+9/ Serie - 3x02
+10/ Serie/Saison 3/Serie.S03E02 (ou toute autre possibilité de 1/ à 9/) (Saison ou Season)
+11/ Serie/Saison 3/02 (Saison ou Season)
+12/ Serie/Serie.S03E02 (ou toute autre possibilité de 1/ à 9/)
+13/ Serie/02 (sera interprété comme saison 01 épisode 02)
+
+
+
+Utilisation
+---------
+
+Ouvrez un terminal et entrez "bspasvus" (sans les guillemets) puis validez.
+Après la première exécution, un fichier ~/.BetaSeries/order.xml est créé, vous pouvez ranger vos séries par ordre de préférence si vous le souhaitez.
+Un fichier ~/.BetaSeries/playlist.pls est aussi créé, contenant les épisodes non vus que le script a trouvé sur votre ordinateur, vous pouvez l'ouvrir avec vlc (entre autre).
+
+Voici quelques exemples d'exécution en ligne de commande (le résultat sera le même avec les mêmes options dans le fichier config):
+
+$ bspasvus --login mon_login --password mon_password
+Affiche la liste de tous les épisodes non vus.
+
+$ bspasvus --login mon_login --password mon_password --folder "/home/name/Vidéos/"
+Affiche la liste de tous les épisodes non vus et essayera de trouver ces épisodes dans le dossier /home/name/Vidéos/ pour créer la playlist.
+
+$ bspasvus --login mon_login --password mon_password --one
+Affiche la liste des premiers épisodes non vus.
+
+$ bspasvus --login mon_login --password mon_password --folder "/home/name/Vidéos/" --watched --subtitles VF
+Affiche la liste de tous les épisodes non vus, essayera de trouver ces épisodes dans le dossier /home/name/Vidéos/ pour créer la playlist, y ajoutera un élément permettant de marquer chaque épisode comme lu à la fin de sa lecture et téléchargera les sous-titres en VF de chaque épisode.
+
+$ bspasvus --login mon_login --password mon_password --downloaded
+Affiche la liste de tous les épisodes non téléchargés.

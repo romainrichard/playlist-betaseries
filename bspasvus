@@ -329,8 +329,7 @@ class BSPasVus:
 					if (self.__watched):
 						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
 					# On se sert du nom du fichier pour récupérer si nécessaire les sous-titres
-					#if ((self.__subtitles == "VF" or self.__subtitles == "VO") and not os.path.isfile(adresse + os.path.splitext(nom)[0] + '.srt')):
-					if (self.__subtitles == "VF" or self.__subtitles == "VO"):
+					if (self.__subtitles == "VF" or self.__subtitles == "VO" or self.__subtitles == "VM"):
 						quality = 0
 						# S'il y a déjà un sous-titre de présent, on essaye de récupérer sa qualité
 						for j in range(0, len(fichiers)):
@@ -353,9 +352,10 @@ class BSPasVus:
 		show = show.replace(' ', '.')
 		
 		# TODO Trouver une meilleure solution
-		# Problème avec The Good Guys (2010) (et accessoirement Bleach (JP))
+		# Problème avec The Good Guys (2010) (et accessoirement Bleach (JP)) à cause des parenthèses et du 2010
 		show = show.split('.(').pop(0)
-		fichier = fichier.replace('2010.', '')
+		for i in range(2000, 2100):
+			fichier = fichier.replace(str(i) + '.', '')
 		
 		# Serie.S03E02
 		# Serie.302
@@ -391,6 +391,8 @@ class BSPasVus:
 				)
 
 	# Télécharge le sous-titres de l'épisode
+	# TODO Si on a pas de srt dans la langue choisie (VO ou VF), on passe en VM
+	# TODO Si l'épisode est en 720p, ne gardez que les srt 720p, s'il n'y en a pas, on prend ce qu'il y a
 	def download_subtitles(self, serie_url, nom, quality):
 		# nom peut contenir des dossiers, on sépare alors les dossiers et le nom du fichier
 		path = unicode(self.__folder, 'utf-8')
@@ -399,7 +401,10 @@ class BSPasVus:
 		filename = os.path.splitext(nom.split('/')[-1])[0]
 		
 		# On récupère les sous-titres correspondant à l'épisode
-		subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename, 'language':self.__subtitles})
+		if (self.__subtitles == "VM"):
+			subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename})
+		else:
+			subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename, 'language':self.__subtitles})
 		
 		# Télécharger les sous-titres
 		if (subtitles.getElementsByTagName('file') != []):
@@ -442,16 +447,16 @@ class BSPasVus:
 	def show_help(self):
 		output("Usage: bspasvus <options>")
 		output("Options list:")
-		output("-h|--help                  : This helpful message")
-		output("-l|--login \"<login>\"       : Your login")
-		output("-p|--password \"<password>\" : Your password")
-		output("-f|--folder \"<folder>\"     : Folder where the episodes are")
-		output("-o|--one                   : Display only one episode for each show")
-		output("-w|--watched               : Add an item to the playlist to mark the episode as watched")
-		output("-s|--subtitles \"language\"  : Download subtitles in the language (VO|VF) you want")
-		output("-d|--downloaded            : Display the episodes you haven't downloaded yet")
-		output("-c|--cut <num>             : Length max for the name of the show")
-		output("-n|--number <num>          : Display the n-th show")
+		output("-h|--help                   : This helpful message")
+		output("-l|--login \"<login>\"        : Your login")
+		output("-p|--password \"<password>\"  : Your password")
+		output("-f|--folder \"<folder>\"      : Folder where the episodes are")
+		output("-o|--one                    : Display only one episode for each show")
+		output("-w|--watched                : Add an item to the playlist to mark the episode as watched")
+		output("-s|--subtitles \"<language>\" : Download subtitles in the language (VO|VF|VM) you want")
+		output("-d|--downloaded             : Display the episodes you haven't downloaded yet")
+		output("-c|--cut <num>              : Length max for the name of the show")
+		output("-n|--number <num>           : Display the n-th show")
 
 
 

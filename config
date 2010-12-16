@@ -13,7 +13,7 @@
 # Marquer automatiquement les épisodes comme vus à la fin de la lecture
 #watched    = True
 
-# Télécharger les sous-titres dans la langue de votre choix (VF ou VO)
+# Télécharger les sous-titres dans la langue de votre choix (VF, VO ou VM si vous n'avez pas de préférence pour la VO ou la VF)
 #subtitles  = VF
 
 # Afficher les épisodes non téléchargés
