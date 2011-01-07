@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 # Auteur : Romain RICHARD <romain.richard.it.engineer@gmail.com>
 
+# TODO (peut-être)
+# - Si un épisode est en 720p, choisir en priorité les srt dont le nom contient '720p'
+# - Si le fichier de sous-titres est une archive contenant plusieurs srt, trouver celui correspondant le mieux à l'épisode
+# - Trouver de meilleures solutions pour les hacks dans la fonction match
+
 from xml.dom import minidom
 from xml.sax.saxutils import escape
 from urllib import urlencode, quote, urlretrieve
@@ -78,6 +83,7 @@ class BSPasVus:
 		self.__subtitles      = ""
 		self.__subtitles_url  = self.__api_url + "subtitles/show.xml"
 		self.__playlist       = os.path.expanduser(base_config + "playlist.pls")
+		self.__list_not_seen  = os.path.expanduser(base_config + "pasvus.txt")
 
 		base = os.path.dirname(self.__order_file)
 		if not os.path.exists(base):
@@ -279,7 +285,11 @@ class BSPasVus:
 		if (self.__number >= 0):
 			begin = self.__number
 			end   = self.__number + (self.__number < l)
+		
+		# La liste des épisode non vus
+		liste = ""
 
+		# On parcourt le fichier xml contenant la liste des épisodes non vus
 		for i in range(begin, end):
 			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
 			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
@@ -287,9 +297,17 @@ class BSPasVus:
 			show    = show[0:self.__cut if (self.__cut >= 0) else len(show)]
 			if (self.__downloaded):
 				if (int(self.__all.getElementsByTagName('downloaded')[i].firstChild.data) == 0):
-					output(show + ' ' + episode + ' ' + title)
+					liste += show + ' ' + episode + ' ' + title + '\n'
 			else:
-				output(show + ' ' + episode + ' ' + title)
+				liste += show + ' ' + episode + ' ' + title + '\n'
+		
+		# On affiche la liste
+		output(liste)
+
+		# On enregistre la liste dans un fichier
+		fd = open(self.__list_not_seen, 'w')
+		fd.write(liste.encode('utf-8'))
+		fd.close()
 
 
 
@@ -322,22 +340,33 @@ class BSPasVus:
 						nom = fichiers[j]
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
 				if (nom != None):
+					# On ajoute l'épisode à la playlist
 					playlist += 'File' + str(2*i) + '=' + adresse + nom + '\n'
+					# On donne un titre à l'élément
+					playlist += 'Title' + str(2*i) + '=' + show + ' ' + episode + '\n'
 					# On marque l'épisode comme téléchargé
 					self.__api.send_request(self.__downloaded_url + serie_url + '.xml', {'season':episode[1:3], 'episode':episode[4:6]})
 					# Si l'utilisateur a demandé que les épisodes soient marqués comme vus, ont ajoute l'élément à la playlist qui fera ça
 					if (self.__watched):
 						playlist += 'File' + str(2*i+1) + '=' + self.__watched_url + serie_url + '.xml?key=' + self.__key + '&token=' + self.__token + '&season=' + episode[1:3] + '&episode=' + episode[4:6] + '\n'
+						playlist += 'Title' + str(2*i+1) + '=' + '[Watched] ' + show + ' ' + episode + '\n'
 					# On se sert du nom du fichier pour récupérer si nécessaire les sous-titres
 					if (self.__subtitles == "VF" or self.__subtitles == "VO" or self.__subtitles == "VM"):
+						# Qualité du sous-titre
 						quality = 0
+						# Le sous-titres est en 720p ?
+						srt_720p = False
 						# S'il y a déjà un sous-titre de présent, on essaye de récupérer sa qualité
 						for j in range(0, len(fichiers)):
 							if (fichiers[j].startswith(os.path.splitext(nom)[0]) and fichiers[j].endswith('srt')):
-								quality_tmp = os.path.splitext(fichiers[j].split('/')[-1])[0].replace(os.path.splitext(nom.split('/')[-1])[0], '').replace('.', '')
-								if (quality_tmp != ''):
-									quality = int(quality_tmp)
-						self.download_subtitles(serie_url, nom, quality)
+								tmp = os.path.splitext(fichiers[j].split('/')[-1])[0].replace(os.path.splitext(nom.split('/')[-1])[0], '')
+								if (tmp.split('.')[-1] != ''):
+									quality = int(tmp.split('.')[-1])
+								# Est-ce que le srt est en 720p ?
+								if (len(tmp.split('.')) >= 2 and tmp.split('.')[-2] == '720p'):
+									srt_720p = True
+						# On télécharge le sous-titres qui correspond le mieux
+						self.download_subtitles(serie_url, nom, quality, srt_720p)
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
@@ -391,9 +420,7 @@ class BSPasVus:
 				)
 
 	# Télécharge le sous-titres de l'épisode
-	# TODO Si on a pas de srt dans la langue choisie (VO ou VF), on passe en VM
-	# TODO Si l'épisode est en 720p, ne gardez que les srt 720p, s'il n'y en a pas, on prend ce qu'il y a
-	def download_subtitles(self, serie_url, nom, quality):
+	def download_subtitles(self, serie_url, nom, quality, srt_720p):
 		# nom peut contenir des dossiers, on sépare alors les dossiers et le nom du fichier
 		path = unicode(self.__folder, 'utf-8')
 		for i in range(0, len(nom.split('/'))-1):
@@ -406,14 +433,22 @@ class BSPasVus:
 		else:
 			subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename, 'language':self.__subtitles})
 		
+		# S'il n'y a pas de sous-titres dans la langue choisie, on passe en VM
+		if (subtitles.getElementsByTagName('file') == []):
+			subtitles = self.__api.send_request(self.__subtitles_url, {'file':filename})
+		
 		# Télécharger les sous-titres
 		if (subtitles.getElementsByTagName('file') != []):
+			# TODO Si l'épisode est en 720p, ne gardez que les srt 720p, s'il n'y en a pas, on prend ce qu'il y a
+			# Matcher avec subtitles.getElementsByTagName('file')
+			ep720p = (nom.find('720p') != -1)
+			
 			# On cherche le sous-titre de meilleure qualité
 			best_quality = 0
 			best_quality_i = 0
 			for i in range(0, subtitles.getElementsByTagName('quality').length):
 				if (int(subtitles.getElementsByTagName('quality')[i].firstChild.data) > best_quality):
-					best_quality = subtitles.getElementsByTagName('quality')[i].firstChild.data
+					best_quality = int(subtitles.getElementsByTagName('quality')[i].firstChild.data)
 					best_quality_i = i
 			
 			# S'il y a un sous-titre de meilleure qualité que celui que l'on possède déjà, on le télécharge
@@ -433,11 +468,30 @@ class BSPasVus:
 					os.remove(subtitle)
 					# Récupérer le nom du fichier que l'on vient de dézipper
 					subtitle = path + tmp
+					if (os.path.isdir(subtitle)):
+						fichiers = []
+						for root, subFolders, files in os.walk(subtitle):
+							for file in files:
+								fichiers.append(os.path.join(root.replace(subtitle,''),file))
+						# TODO Récupérer le sous-titres qui correspond le mieux (pour le moment on prend le 1er trouvé)
+						tmp2 = fichiers[0]
+						# Le déplacer dans path
+						os.rename(path + tmp + tmp2, path + tmp2)
+						# Supprimer le dossier
+						for i in range(0, len(fichiers)):
+							if (os.path.isfile(path + tmp + fichiers[i])):
+								os.remove(path + tmp + fichiers[i])
+						os.rmdir(path + tmp)
+						# On récupère l'adresse du srt
+						subtitle = path + tmp2
+						
 		
 				# Renommer le fichier srt pour correspondre au nom de la vidéo
-				os.rename(subtitle, path + filename + '.' + best_quality + '.srt')
+				# TODO Video.language.quality.srt ou Video.language.720p.quality.srt
+				os.rename(subtitle, path + filename + '.' + str(best_quality) + '.srt')
 				
 				# S'il y avait un fichier sous-titres d'une qualité moindre, on le supprime
+				# TODO Rajouter le '.720p' si srt_720p
 				if (quality > 0):
 					os.remove(path + filename + '.' + str(quality) + '.srt')
 
