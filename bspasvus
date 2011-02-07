@@ -314,11 +314,15 @@ class BSPasVus:
 	# Récupère les adresses des épisodes pas vus et enregistre la playlist
 	def create_playlist(self):
 		playlist = ''
+		adresse = unicode(self.__folder, 'utf-8')
+		# La liste des fichiers
+		fichiers = []
+		for root, subFolders, files in os.walk(adresse):
+			for file in files:
+				fichiers.append(os.path.join(root.replace(adresse,''),file))
 		# Pour ne pas récupérer les url des srt
 		decalage_url = 0
 		for i in range(0, self.__all.getElementsByTagName('episode').length/2):
-			adresse = unicode(self.__folder, 'utf-8')
-			
 			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
 			# 2*i+1 car il y a 2 tags <episode> pour chaque episode non vu, le 2nd - qui nous intéresse - contient le numéro de saison et d'épisode
 			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
@@ -331,15 +335,22 @@ class BSPasVus:
 			if (os.path.isdir(adresse)):
 				nom = None
 				# Chercher un fichier commençant par show.episode
-				fichiers = []
-				for root, subFolders, files in os.walk(adresse):
-					for file in files:
-						fichiers.append(os.path.join(root.replace(adresse,''),file))
-				for j in range(0, len(fichiers)):
+				j = 0
+				stop = False
+				while (not stop):
 					if (self.match(fichiers[j], show, episode)):
 						nom = fichiers[j]
+						# On s'arrête si on a trouvé l'épisode
+						stop = True
+					else:
+						j = j + 1
+						stop = (j >= len(fichiers))
+				#for j in range(0, len(fichiers)):
+				#	if (self.match(fichiers[j], show, episode)):
+				#		nom = fichiers[j]
+				
 				# Si un fichier a été trouvé, on l'ajoute à la playlist
-				if (nom != None):
+				while (nom != None):
 					# On ajoute l'épisode à la playlist
 					playlist += 'File' + str(2*i) + '=' + adresse + nom + '\n'
 					# On donne un titre à l'élément
@@ -367,6 +378,24 @@ class BSPasVus:
 									srt_720p = True
 						# On télécharge le sous-titres qui correspond le mieux
 						self.download_subtitles(serie_url, nom, quality, srt_720p)
+
+					nom = None
+					
+					# Si on a demandé l'affiche du premier épisode non vu on n'aura pas les suivants dans le xml
+					# On va alors chercher les épisodes suivants pour les ajouter à la playlist
+					if (self.__one):
+						episode = self.episode_suivant(episode)
+						# Chercher un fichier commençant par show.episode
+						j = 0
+						stop = False
+						while (not stop):
+							if (self.match(fichiers[j], show, episode)):
+								nom = fichiers[j]
+								# On s'arrête si on a trouvé l'épisode
+								stop = True
+							else:
+								j = j + 1
+								stop = (j >= len(fichiers))
 
 		# Enregistre la playlist
 		fd = open(self.__playlist, 'w')
@@ -399,7 +428,8 @@ class BSPasVus:
 		# Serie/Serie.S03E02 ...
 		# Serie/Saison 3/02
 		# Serie/02 = Serie.S01E02
-		r = re.match("((.*?)[/\\\\])*?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
+		
+		r = re.match("((.*?)[/\\\\])*?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})?[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
 		
 		# TODO Trouver une meilleure solution
 		f_show = ''
@@ -411,6 +441,12 @@ class BSPasVus:
 			#output('OUPS ! ' + show)
 			ra = re.match("(?P<f_show>.*?)/(.*?)", fichier)
 			f_show = ra.group('f_show').upper()
+		
+		#if (fichier.startswith('Bleach') and show.startswith('Bleach')):
+			#output(fichier)
+			#output(show + ' ' + episode)
+			#output(f_season)
+			#output(f_episode)
 		
 		return (
 				r != None and
@@ -494,6 +530,15 @@ class BSPasVus:
 				# TODO Rajouter le '.720p' si srt_720p
 				if (quality > 0):
 					os.remove(path + filename + '.' + str(quality) + '.srt')
+
+	# Retourne l'épisode "suivant"
+	# /!\ Ne fait qu'incrémenter le numéro de l'épisode, pas celui de la saison
+	# i.e. si S03E08 est le dernier ép de la S3, il n'ira pas chercher S04E01, il s'arrêtera là
+	# TODO Permettre le changement de saison ? (=> modifier le comportement dans create_playlist())
+	#      Gérer le cas où l'épisode est 99 ?
+	def episode_suivant(self, episode):
+		ep_suivant_num = int(episode[4:6])+1
+		return str(episode[0:4] + ('0' if (ep_suivant_num<10) else '') + str(ep_suivant_num))
 
 
 
