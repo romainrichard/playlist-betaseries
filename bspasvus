@@ -408,6 +408,8 @@ class BSPasVus:
 		fichier = fichier.replace('_', '.')
 		fichier = fichier.replace(' ', '.')
 		show = show.replace(' ', '.')
+		# Problème avec Naruto: Shippuuden
+		show = show.replace(':', '')
 		
 		# TODO Trouver une meilleure solution
 		# Problème avec The Good Guys (2010) (et accessoirement Bleach (JP)) à cause des parenthèses et du 2010
@@ -429,7 +431,7 @@ class BSPasVus:
 		# Serie/Saison 3/02
 		# Serie/02 = Serie.S01E02
 		
-		r = re.match("((.*?)[/\\\\])*?(?P<f_show>.*?)[.]([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})?[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
+		r = re.match("((.*?)[/\\\\])*?(?P<f_show>.*?)[.]?([\\\\/]?[sS]?((ai|ea)son)?\.?(?P<f_season>\\d{1,2})?[/\\\\]?[eEx]?)(?P<f_episode>\\d{2}).*(avi|mkv|mp4)$", fichier)
 		
 		# TODO Trouver une meilleure solution
 		f_show = ''
@@ -441,12 +443,6 @@ class BSPasVus:
 			#output('OUPS ! ' + show)
 			ra = re.match("(?P<f_show>.*?)/(.*?)", fichier)
 			f_show = ra.group('f_show').upper()
-		
-		#if (fichier.startswith('Bleach') and show.startswith('Bleach')):
-			#output(fichier)
-			#output(show + ' ' + episode)
-			#output(f_season)
-			#output(f_episode)
 		
 		return (
 				r != None and
