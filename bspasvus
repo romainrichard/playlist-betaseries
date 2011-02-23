@@ -403,13 +403,15 @@ class BSPasVus:
 		fd.close()
 
 	# Regexp sur le nom du fichier
-	# /!\ Les dossiers contenant chaque série doivent avoir le même nom que la série sur betaseries (à part pour les animes où le '(JP)' n'est pas nécessaire
+	# /!\ Les dossiers contenant chaque série doivent avoir le même nom que la série sur betaseries (à part pour les animes où le '(JP)' n'est pas nécessaire)
 	def match(self, fichier, show, episode):
 		fichier = fichier.replace('_', '.')
 		fichier = fichier.replace(' ', '.')
 		show = show.replace(' ', '.')
 		# Problème avec Naruto: Shippuuden
 		show = show.replace(':', '')
+		# Problème avec Mr. Sunshine
+		show = show.replace('..', '.')
 		
 		# TODO Trouver une meilleure solution
 		# Problème avec The Good Guys (2010) (et accessoirement Bleach (JP)) à cause des parenthèses et du 2010
