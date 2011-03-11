@@ -260,15 +260,16 @@ class BSPasVus:
 		# On parcourt le fichier self.__order_file
 		for i in range (0, order.getElementsByTagName('show').length):
 			serie = order.getElementsByTagName('show')[i].firstChild.data
-			serie_j = -1
+			serie_j = []
 
 			# On parcourt le fichier self.__all
 			for j in range (0, self.__all.getElementsByTagName('show').length):
 				if (serie == self.__all.getElementsByTagName('show')[j].firstChild.data):
-					serie_j = j
+					serie_j.append(j)
 
-			if (serie_j != -1): # Il y a un épisode pas vus de la série serie
-				all_new += self.__all.getElementsByTagName('episode')[2*serie_j].toxml()
+			if (serie_j != []): # Il y a au moins un épisode pas vus de la série serie
+				for k in range (0, len(serie_j)):
+					all_new += self.__all.getElementsByTagName('episode')[2*serie_j[k]].toxml()
 
 		all_new += "\n</root>"
 		self.__all = minidom.parseString(all_new.encode('utf-8'))
