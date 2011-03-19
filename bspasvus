@@ -171,7 +171,6 @@ class BSPasVus:
 		self.__all = self.__api.send_request(self.__all_url, ({'view':'next'} if (self.__one) else {}))
 
 
-
 	# Crée le fichier XML avec les séries ordonnées
 	def order_shows(self):
 		# La liste des séries non archivées de l'utilisateur
@@ -293,7 +292,8 @@ class BSPasVus:
 		# On parcourt le fichier xml contenant la liste des épisodes non vus
 		for i in range(begin, end):
 			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
-			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			#episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			episode = self.__all.getElementsByTagName('number')[i].firstChild.data
 			title   = ('' if (self.__all.getElementsByTagName('title')[i].firstChild == None) else self.__all.getElementsByTagName('title')[i].firstChild.data)
 			show    = show[0:self.__cut if (self.__cut >= 0) else len(show)]
 			if (self.__downloaded):
@@ -326,7 +326,8 @@ class BSPasVus:
 		for i in range(0, self.__all.getElementsByTagName('episode').length/2):
 			show    = self.__all.getElementsByTagName('show')[i].firstChild.data
 			# 2*i+1 car il y a 2 tags <episode> pour chaque episode non vu, le 2nd - qui nous intéresse - contient le numéro de saison et d'épisode
-			episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			#episode = self.__all.getElementsByTagName('episode')[2*i+1].firstChild.data
+			episode = self.__all.getElementsByTagName('number')[i].firstChild.data
 			# On ne veut pas les url des srt (http://www.betaseries.com/srt/*****) mais de la serie (le nom)
 			while(self.__all.getElementsByTagName('url')[i+decalage_url].firstChild.data.startswith('http')):
 				decalage_url += 1
